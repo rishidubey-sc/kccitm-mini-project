@@ -1,0 +1,64 @@
+pothole_id,state,city,latitude,longitude,severity,width_cm,depth_cm,road_type,reported_date,is_sample
+SAMPLE-001,Uttar Pradesh,Lucknow,26.85877,80.91199,Low,56,7,National Highway,2026-07-22,true
+SAMPLE-002,Uttar Pradesh,Kanpur,26.48268,80.30908,High,61,21,National Highway,2026-01-30,true
+SAMPLE-003,Uttar Pradesh,Noida,28.51475,77.39508,High,70,16,National Highway,2026-02-05,true
+SAMPLE-004,Uttar Pradesh,Greater Noida,28.48485,77.51064,High,87,6,National Highway,2026-04-25,true
+SAMPLE-005,Uttar Pradesh,Varanasi,25.28157,82.95159,High,88,21,State Highway,2026-07-23,true
+SAMPLE-006,Uttar Pradesh,Agra,27.17995,78.01377,High,52,16,State Highway,2026-03-15,true
+SAMPLE-007,Uttar Pradesh,Prayagraj,25.44691,81.83609,High,28,21,National Highway,2026-10-20,true
+SAMPLE-008,Uttar Pradesh,Lucknow,26.82318,80.96063,High,87,4,Residential Street,2026-11-13,true
+SAMPLE-009,Uttar Pradesh,Kanpur,26.48378,80.32083,High,55,17,State Highway,2026-10-27,true
+SAMPLE-010,Uttar Pradesh,Noida,28.50205,77.37502,High,38,25,Residential Street,2026-05-05,true
+SAMPLE-011,Uttar Pradesh,Greater Noida,28.48312,77.46986,High,58,17,Residential Street,2026-05-28,true
+SAMPLE-012,Uttar Pradesh,Varanasi,25.35226,82.96764,Medium,36,13,National Highway,2026-03-19,true
+SAMPLE-013,Madhya Pradesh,Bhopal,23.24711,77.40061,High,86,21,Residential Street,2026-06-10,true
+SAMPLE-014,Madhya Pradesh,Indore,22.7468,75.89327,High,89,17,Residential Street,2026-02-05,true
+SAMPLE-015,Madhya Pradesh,Jabalpur,23.19327,80.02585,Low,23,4,Residential Street,2026-06-08,true
+SAMPLE-016,Madhya Pradesh,Gwalior,26.24926,78.17056,High,51,25,Residential Street,2026-07-17,true
+SAMPLE-017,Madhya Pradesh,Bhopal,23.22927,77.37732,High,60,8,City Main Road,2026-11-09,true
+SAMPLE-018,Madhya Pradesh,Indore,22.71088,75.88741,Medium,31,10,National Highway,2026-07-23,true
+SAMPLE-019,Madhya Pradesh,Jabalpur,23.18546,80.01707,High,36,17,Residential Street,2026-07-25,true
+SAMPLE-020,Madhya Pradesh,Gwalior,26.25722,78.19742,High,85,11,Residential Street,2026-08-01,true
+SAMPLE-021,Tamil Nadu,Chennai,13.0568,80.24926,Low,44,7,State Highway,2026-02-12,true
+SAMPLE-022,Tamil Nadu,Coimbatore,10.99139,76.93835,High,16,18,State Highway,2026-10-29,true
+SAMPLE-023,Tamil Nadu,Madurai,9.93398,78.10529,High,68,20,State Highway,2026-07-09,true
+SAMPLE-024,Tamil Nadu,Tiruchirappalli,10.78703,78.73438,High,80,22,Residential Street,2026-01-28,true
+SAMPLE-025,Tamil Nadu,Chennai,13.05098,80.28144,High,65,15,National Highway,2026-07-21,true
+SAMPLE-026,Tamil Nadu,Coimbatore,11.01205,76.92459,Low,39,5,National Highway,2026-04-17,true
+SAMPLE-027,Tamil Nadu,Madurai,9.8973,78.08792,Low,28,3,City Main Road,2026-10-18,true
+SAMPLE-028,Tamil Nadu,Tiruchirappalli,10.79963,78.67658,Low,18,5,City Main Road,2026-04-17,true
+SAMPLE-029,Odisha,Bhubaneswar,20.29403,85.79373,High,59,22,Residential Street,2026-07-06,true
+SAMPLE-030,Odisha,Cuttack,20.44745,85.85433,High,74,18,City Main Road,2026-09-05,true
+SAMPLE-031,Odisha,Rourkela,22.26171,84.83002,High,48,18,City Main Road,2026-03-24,true
+SAMPLE-032,Odisha,Bhubaneswar,20.32923,85.84515,High,33,25,City Main Road,2026-10-06,true
+SAMPLE-033,Odisha,Cuttack,20.46397,85.91546,High,26,25,City Main Road,2026-05-14,true
+SAMPLE-034,Odisha,Rourkela,22.28272,84.83997,High,43,20,State Highway,2026-10-05,true
+SAMPLE-035,Punjab,Ludhiana,30.92019,75.83544,Medium,39,10,Residential Street,2026-07-25,true
+SAMPLE-036,Punjab,Amritsar,31.65721,74.87008,High,60,3,State Highway,2026-01-15,true
+SAMPLE-037,Punjab,Jalandhar,31.3624,75.56537,High,59,17,State Highway,2026-06-28,true
+SAMPLE-038,Punjab,Patiala,30.31554,76.36325,Medium,28,10,National Highway,2026-08-29,true
+SAMPLE-039,Punjab,Ludhiana,30.92497,75.82408,High,76,23,National Highway,2026-06-26,true
+SAMPLE-040,Punjab,Amritsar,31.63224,74.84658,High,64,25,City Main Road,2026-04-13,true
+SAMPLE-041,Assam,Guwahati,26.13661,91.77194,High,26,15,State Highway,2026-08-26,true
+SAMPLE-042,Assam,Dibrugarh,27.44489,94.94439,Low,36,7,State Highway,2026-01-15,true
+SAMPLE-043,Assam,Silchar,24.80577,92.78276,High,75,24,National Highway,2026-06-29,true
+SAMPLE-044,Assam,Guwahati,26.14663,91.77089,High,16,23,Residential Street,2026-02-22,true
+SAMPLE-045,Assam,Dibrugarh,27.45295,94.89544,Medium,39,9,State Highway,2026-01-15,true
+SAMPLE-046,Assam,Silchar,24.83685,92.80564,High,90,13,National Highway,2026-05-13,true
+SAMPLE-047,Haryana,Gurugram,28.4847,77.02794,High,60,17,State Highway,2026-10-26,true
+SAMPLE-048,Haryana,Faridabad,28.40974,77.34762,High,83,7,State Highway,2026-09-26,true
+SAMPLE-049,Haryana,Hisar,29.12052,75.73123,Low,15,7,National Highway,2026-03-30,true
+SAMPLE-050,Haryana,Ambala,30.39279,76.77916,High,86,4,Residential Street,2026-06-16,true
+SAMPLE-051,Haryana,Gurugram,28.43938,77.00875,High,28,20,National Highway,2026-01-30,true
+SAMPLE-052,Delhi,New Delhi,28.57613,77.24052,High,79,17,National Highway,2026-10-15,true
+SAMPLE-053,Delhi,Dwarka,28.62017,77.05849,High,71,13,State Highway,2026-11-10,true
+SAMPLE-054,Delhi,Rohini,28.75216,77.05474,High,50,17,State Highway,2026-09-18,true
+SAMPLE-055,Delhi,New Delhi,28.64532,77.18521,High,81,11,Residential Street,2026-10-14,true
+SAMPLE-056,Himachal Pradesh,Shimla,31.09619,77.15868,High,32,16,State Highway,2026-03-04,true
+SAMPLE-057,Himachal Pradesh,Mandi,31.72166,76.95461,High,69,5,State Highway,2026-04-19,true
+SAMPLE-058,Himachal Pradesh,Solan,30.93513,77.1341,High,61,7,State Highway,2026-05-10,true
+SAMPLE-059,Ladakh,Leh,34.12562,77.59053,High,27,15,State Highway,2026-09-07,true
+SAMPLE-060,Ladakh,Kargil,34.59343,76.1272,High,35,25,Residential Street,2026-08-09,true
+SAMPLE-061,Uttarakhand,Dehradun,30.28388,78.02148,Medium,40,14,City Main Road,2026-06-13,true
+SAMPLE-062,Uttarakhand,Haridwar,29.96195,78.15495,High,85,17,City Main Road,2026-08-14,true
+SAMPLE-063,Uttarakhand,Haldwani,29.25711,79.53607,High,80,5,National Highway,2026-02-27,true

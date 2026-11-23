@@ -1,0 +1,30 @@
+region_type,region,metric,period,value,source_note
+National,India,pothole_deaths,2020,1555,MoRTH reply in Lok Sabha (via news reports)
+National,India,pothole_deaths,2021,1481,MoRTH reply in Lok Sabha (via news reports)
+National,India,pothole_deaths,2022,1856,MoRTH reply in Lok Sabha (via news reports)
+National,India,pothole_deaths,2023,2161,MoRTH reply in Lok Sabha (via news reports)
+National,India,pothole_deaths,2024,2385,MoRTH reply in Lok Sabha (via news reports)
+National,India,pothole_deaths,2020-2024,9438,MoRTH reply in Lok Sabha (via news reports)
+National,India,pothole_accidents,2020-2024,23056,MoRTH reply in Lok Sabha (via news reports)
+National,India,pothole_injuries,2020-2024,19956,MoRTH reply in Lok Sabha (via news reports)
+National,India,pothole_grievous_injuries,2020-2024,9670,MoRTH reply in Lok Sabha (via news reports)
+State,Uttar Pradesh,pothole_deaths,2020-2024,5127,MoRTH via news reports
+State,Uttar Pradesh,pothole_deaths,2022,1030,MoRTH via news reports
+State,Uttar Pradesh,pothole_deaths,2023,1320,MoRTH via news reports
+State,Uttar Pradesh,pothole_deaths,2024,1369,MoRTH via news reports
+State,Madhya Pradesh,pothole_deaths,2020-2024,969,MoRTH via news reports
+State,Madhya Pradesh,pothole_deaths,2024,277,MoRTH via news reports
+State,Tamil Nadu,pothole_deaths,2020-2024,612,MoRTH via news reports
+State,Odisha,pothole_deaths,2020-2024,425,MoRTH via news reports
+State,Punjab,pothole_deaths,2020-2024,414,MoRTH via news reports
+State,Assam,pothole_deaths,2020-2024,395,MoRTH via news reports
+State,Haryana,pothole_deaths,2020-2024,255,MoRTH via The Tribune
+State,Delhi,pothole_deaths,2020-2024,50,MoRTH via The Tribune
+State,Himachal Pradesh,pothole_deaths,2020-2024,19,MoRTH via The Tribune
+State,Ladakh,pothole_deaths,2020-2024,3,MoRTH via The Tribune
+State,Uttarakhand,pothole_deaths,2020-2024,2,MoRTH via The Tribune
+State,Kerala,pothole_grievous_injuries,2020-2024,3000+,approximate ("over 3000") via news reports
+State,Karnataka,pothole_grievous_injuries,2020-2024,2700+,approximate ("over 2700") via news reports
+State,Andhra Pradesh,pothole_deaths,2020-2024,0,reported zero (likely under-reporting)
+State,Bihar,pothole_deaths,2020-2024,0,reported zero (likely under-reporting)
+State,Goa,pothole_deaths,2020-2024,0,reported zero (likely under-reporting)

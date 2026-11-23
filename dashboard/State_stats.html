@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROADSTATE — State-wise Pothole Statistics</title>
+<style>
+  :root {
+    --asphalt: #16181c; --panel: #1f2227; --panel-raised: #262a30; --hairline: #34383f;
+    --chalk: #eeece2; --slate: #8b92a0; --slate-dim: #5c626e;
+    --safety-yellow: #ffc933; --severe: #e8542e; --moderate: #f2a93c; --minor: #4fae7c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--asphalt); color: var(--chalk);
+    font-family: Inter, "Segoe UI", system-ui, sans-serif; line-height: 1.5;
+  }
+  header {
+    background: var(--panel); border-bottom: 3px solid var(--safety-yellow);
+    padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  header h1 { margin: 0; font-size: 22px; letter-spacing: 0.04em; text-transform: uppercase; }
+  header .sub { font-size: 11px; color: var(--slate); letter-spacing: 0.08em; text-transform: uppercase; }
+  header a {
+    color: var(--safety-yellow); text-decoration: none; font-size: 13px;
+    border: 1px solid var(--hairline); padding: 8px 14px; border-radius: 6px;
+  }
+  header a:hover { background: var(--panel-raised); }
+  main { max-width: 980px; margin: 0 auto; padding: 24px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .card { background: var(--panel); border: 1px solid var(--hairline); border-radius: 8px; padding: 14px 16px; }
+  .card .label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--slate); }
+  .card .value { font-size: 32px; font-weight: 700; margin-top: 4px; }
+  .card .hint { font-size: 12px; color: var(--slate-dim); }
+  h2 { font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; margin: 28px 0 4px; }
+  .desc { font-size: 13px; color: var(--slate); margin: 0 0 14px; }
+  .row { display: grid; grid-template-columns: 170px 1fr 70px; gap: 12px; align-items: center; padding: 6px 0; }
+  .row .name { font-size: 14px; }
+  .row .num { font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; }
+  .track { background: var(--panel); border-radius: 4px; height: 20px; overflow: hidden; border: 1px solid var(--hairline); }
+  .bar { height: 100%; background: var(--severe); }
+  .bar.derived { background: repeating-linear-gradient(-45deg, var(--slate-dim), var(--slate-dim) 6px, var(--hairline) 6px, var(--hairline) 12px); }
+  .bar.year { background: var(--moderate); }
+  .zero { color: var(--slate-dim); font-size: 12px; }
+  .note {
+    background: var(--panel); border: 1px solid var(--hairline); border-left: 3px solid var(--safety-yellow);
+    border-radius: 6px; padding: 12px 16px; font-size: 13px; color: var(--slate); margin-top: 28px;
+  }
+  .note b { color: var(--chalk); }
+  .note code { background: var(--panel-raised); padding: 1px 5px; border-radius: 3px; }
+  @media (max-width: 560px) { .row { grid-template-columns: 110px 1fr 56px; } }
+  .banner { background: var(--panel); border: 1px solid var(--hairline); border-radius: 6px; padding: 10px 14px; font-size: 13px; color: var(--slate); margin-bottom: 20px; }
+  .banner.warn { border-left: 3px solid var(--safety-yellow); }
+  .nodata { color: var(--slate-dim); font-size: 12px; }
+  .bar.none { background: transparent; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Roadstate — State-wise Pothole Statistics</h1>
+    <div class="sub">Pothole-related road accident deaths in India · all states and union territories</div>
+  </div>
+  <a href="dashboard.html">&larr; Back to live dashboard</a>
+</header>
+
+<main>
+  <div id="banner" class="banner"></div>
+
+  <div class="cards">
+    <div class="card"><div class="label">Deaths, <span class="period"></span></div><div class="value" id="c-total">—</div><div class="hint" id="c-total-hint">total in this data</div></div>
+    <div class="card"><div class="label">Worst state</div><div class="value" id="c-top">—</div><div class="hint" id="c-top-hint"></div></div>
+    <div class="card"><div class="label" id="c-3-label">States with data</div><div class="value" id="c-3">—</div><div class="hint" id="c-3-hint"></div></div>
+  </div>
+
+  <h2>Deaths by state and union territory, <span class="period"></span></h2>
+  <p class="desc" id="state-desc"></p>
+  <div id="state-chart"></div>
+
+  <div id="year-section">
+    <h2>National deaths by year</h2>
+    <p class="desc">All states and UTs combined.</p>
+    <div id="year-chart"></div>
+  </div>
+
+  <div class="note">
+    <b>About this data.</b> Pothole-related deaths are compiled from police reports sent by states and UTs and tabled in
+    Parliament by the Ministry of Road Transport and Highways. Some states report none at all, which says more about how
+    each state records accidents than about the state of its roads. <b>Check any figure against the official source before
+    quoting it.</b>
+  </div>
+</main>
+
+<script>
+const API_BASE = "http://localhost:5000";
+
+const MASTER = [
+  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh",
+  "Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha",
+  "Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal",
+  "Andaman and Nicobar Islands","Chandigarh","Dadra and Nagar Haveli and Daman and Diu","Delhi","Jammu and Kashmir",
+  "Ladakh","Lakshadweep","Puducherry"
+];
+
+/* Built-in partial figures, used only when the backend (and its CSV) can't be reached. 2020-2024, official total 9,438. */
+const FALLBACK = {
+  period: "2020–2024", total: 9438, partial: true,
+  states: [
+    { state: "Uttar Pradesh", deaths: 5127 }, { state: "Madhya Pradesh", deaths: 969 }, { state: "Tamil Nadu", deaths: 612 },
+    { state: "Odisha", deaths: 425 }, { state: "Punjab", deaths: 414 }, { state: "Assam", deaths: 395 },
+    { state: "Andhra Pradesh", deaths: 0 }, { state: "Bihar", deaths: 0 }, { state: "Goa", deaths: 0 },
+  ],
+  national_by_year: { "2020": 1555, "2021": 1481, "2022": 1856, "2023": 2161, "2024": 2385 },
+};
+
+const fmt = n => n.toLocaleString("en-IN");
+const ALIASES = { "orissa": "odisha", "pondicherry": "puducherry", "uttaranchal": "uttarakhand",
+  "nct of delhi": "delhi", "andaman and nicobar": "andaman and nicobar islands", "jammu and kashmir ut": "jammu and kashmir" };
+function norm(name) {
+  let n = name.toLowerCase().replace(/&/g, " and ").replace(/\((ut|uts|state)\)/g, " ")
+    .replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+  if (n.startsWith("dadra") || n.startsWith("daman")) n = "dadra and nagar haveli and daman and diu";
+  return ALIASES[n] || n;
+}
+
+async function loadData() {
+  try {
+    const r = await fetch(`${API_BASE}/api/state-deaths`, { signal: AbortSignal.timeout(3000) });
+    if (!r.ok) throw new Error("not ok");
+    return { ...(await r.json()), fromFile: true };
+  } catch (e) {
+    return { ...FALLBACK, fromFile: false };
+  }
+}
+
+const rowHtml = (name, pct, cls, text) => `
+  <div class="row">
+    <div class="name">${name}</div>
+    <div class="track"><div class="bar ${cls}" style="width:${pct}%"></div></div>
+    <div class="num">${text}</div>
+  </div>`;
+
+function render(data) {
+  document.querySelectorAll(".period").forEach(el => el.textContent = data.period || "");
+  const banner = document.getElementById("banner");
+
+  // Merge the file's rows into the full list of 36 states and UTs.
+  const byName = {}, partial = {};
+  data.states.forEach(d => {
+    const k = norm(d.state);
+    byName[k] = (byName[k] || 0) + d.deaths;
+    if (d.total_is_partial) partial[k] = Object.keys(d.by_year || {}).join(", ") || "partial";
+  });
+  const label = name => partial[norm(name)] ? `${name} <span class="nodata">(${partial[norm(name)]} only)</span>` : name;
+  const rows = MASTER.map(name => ({ name, deaths: byName[norm(name)] ?? null }));
+  const known = new Set(MASTER.map(norm));
+  const extras = data.states.filter(d => !known.has(norm(d.state)));
+  const withData = rows.filter(r => r.deaths !== null).sort((a, b) => b.deaths - a.deaths);
+  const noData = rows.filter(r => r.deaths === null);
+  const max = Math.max(...withData.map(r => r.deaths), 1);
+
+  let html = withData.map(r => r.deaths === 0
+    ? rowHtml(r.name, 0, "none", `<span class="nodata">0</span>`)
+    : rowHtml(label(r.name), r.deaths / max * 100, "", fmt(r.deaths))).join("");
+  html += extras.map(d => rowHtml(`${d.state} (not matched)`, d.deaths / max * 100, "derived", fmt(d.deaths))).join("");
+  html += noData.map(r => rowHtml(r.name, 0, "none", `<span class="nodata">no data</span>`)).join("");
+
+  const listedSum = data.states.reduce((s, d) => s + d.deaths, 0);
+  if (!data.fromFile) {
+    const other = Math.max(data.total - listedSum, 0);
+    html = html.replace(/<div class="row">\s*<div class="name">[^<]*<\/div>\s*<div class="track"><div class="bar none"[^>]*><\/div><\/div>\s*<div class="num"><span class="nodata">no data<\/span><\/div>\s*<\/div>/g, "");
+    html += rowHtml("All other states combined (derived)", other / max * 100, "derived", fmt(other));
+    banner.className = "banner warn";
+    banner.textContent = "Backend not reachable, so this shows built-in figures for only nine states. Start the backend (python app.py) to load your CSV with every state.";
+  } else {
+    banner.className = "banner";
+    banner.textContent = `Loaded from ${data.source_file} through the backend. ` +
+      `${withData.length} of ${MASTER.length} states and UTs have a figure.` +
+      ((data.sources || []).length ? ` Sources noted in the file: ${data.sources.slice(0, 3).join("; ")}.` : "") +
+      (data.total !== 9438 && data.period.startsWith("2020") && data.period.endsWith("2024")
+        ? ` For reference, the national total reported to Parliament for 2020–2024 is 9,438; this file adds up to ${fmt(data.total)}, so check the file against the official table.` : "");
+  }
+  document.getElementById("state-chart").innerHTML = html;
+  document.getElementById("state-desc").textContent = data.fromFile
+    ? "States without a figure in your file are marked “no data”."
+    : "Partial built-in figures. The hatched bar is derived (national total minus the states listed), not an official figure.";
+
+  // Cards
+  document.getElementById("c-total").textContent = fmt(data.total);
+  const top = withData[0];
+  document.getElementById("c-top").textContent = top ? top.name : "—";
+  document.getElementById("c-top-hint").textContent = top ? `${fmt(top.deaths)} deaths · ${Math.round(top.deaths / data.total * 100)}% of total` : "";
+  document.getElementById("c-3").textContent = `${withData.length} / ${MASTER.length}`;
+  document.getElementById("c-3-hint").textContent = "states and UTs with a figure";
+
+  // Year chart
+  const years = Object.entries(data.national_by_year || {}).sort();
+  document.getElementById("year-section").style.display = years.length ? "" : "none";
+  const ymax = Math.max(...years.map(([, v]) => v), 1);
+  document.getElementById("year-chart").innerHTML =
+    years.map(([y, v]) => rowHtml(y, v / ymax * 100, "year", fmt(v))).join("");
+}
+
+loadData().then(render);
+</script>
+</body>
+</html>

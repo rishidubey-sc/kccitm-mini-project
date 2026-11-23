@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROADSTATE — Live Pothole Monitor</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --asphalt: #16181c;
+      --panel: #181a1f;
+      --panel-raised: #22252b;
+      --hairline: #2d3139;
+      --chalk: #eeece2;
+      --slate: #8b92a0;
+      --slate-dim: #646b77;
+      --safety-yellow: #ffc933;
+      --severe: #e8542e;
+      --moderate: #f2a93c;
+      --minor: #4fae7c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--asphalt);
+      color: var(--chalk);
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+
+    .mono {
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    /* ---------- Layout ---------- */
+    #app {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      height: 100vh;
+    }
+
+    /* ---------- Header ---------- */
+    header {
+      background: #1f2227;
+      border-bottom: 3px solid var(--safety-yellow);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      background-image: repeating-linear-gradient(-45deg, transparent, transparent 18px, rgba(255, 201, 51, 0.035) 18px, rgba(255, 201, 51, 0.035) 36px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      flex-shrink: 0;
+    }
+
+    .brand h1 {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: 0.04em;
+      margin: 0;
+      text-transform: uppercase;
+      color: var(--chalk);
+    }
+
+    .brand .sub {
+      font-size: 11px;
+      color: var(--slate);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+
+    /* ---------- Stat strip ---------- */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      background: var(--asphalt);
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .stat {
+      padding: 14px 24px;
+      border-right: 1px solid var(--hairline);
+    }
+
+    .stat:last-child {
+      border-right: none;
+    }
+
+    .stat .label {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--slate-dim);
+      margin-bottom: 4px;
+    }
+
+    .stat .value {
+      font-family: 'Oswald', sans-serif;
+      font-size: 28px;
+      font-weight: 600;
+      line-height: 1;
+      color: var(--chalk);
+    }
+
+    .stat .value.severe-num {
+      color: var(--severe);
+    }
+
+    .stat .value.moderate-num {
+      color: var(--moderate);
+    }
+
+    .stat .value.minor-num {
+      color: var(--minor);
+    }
+
+    /* ---------- Main grid ---------- */
+    main {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      min-height: 0;
+    }
+
+    .map-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #0d0e10;
+    }
+
+    /* Map View Mode Indicator Overlay */
+    .map-mode-badge {
+      position: absolute;
+      bottom: 24px;
+      left: 16px;
+      z-index: 800;
+      background: rgba(24, 26, 31, 0.92);
+      border: 1px solid var(--hairline);
+      backdrop-filter: blur(6px);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--chalk);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    }
+
+    .map-mode-badge .mode-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--safety-yellow);
+    }
+
+    .map-mode-badge button {
+      background: var(--panel-raised);
+      border: 1px solid var(--hairline);
+      color: var(--safety-yellow);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .map-mode-badge button:hover {
+      border-color: var(--safety-yellow);
+    }
+
+    /* State Cluster Marker Styling */
+    .state-cluster {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(24, 26, 31, 0.94);
+      border: 2px solid var(--safety-yellow);
+      border-radius: 999px;
+      color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65);
+      transition: transform 0.15s ease;
+      cursor: pointer;
+      text-align: center;
+      padding: 4px 10px;
+      white-space: nowrap;
+    }
+
+    .state-cluster:hover {
+      transform: scale(1.12);
+      z-index: 999 !important;
+    }
+
+    .state-cluster.sev-severe {
+      border-color: var(--severe);
+      box-shadow: 0 0 12px rgba(232, 84, 46, 0.45);
+    }
+
+    .state-cluster.sev-moderate {
+      border-color: var(--moderate);
+      box-shadow: 0 0 12px rgba(242, 169, 60, 0.35);
+    }
+
+    .state-cluster.sev-minor {
+      border-color: var(--minor);
+      box-shadow: 0 0 12px rgba(79, 174, 124, 0.35);
+    }
+
+    .state-cluster .sc-count {
+      font-family: 'Oswald', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .state-cluster .sc-name {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: var(--slate);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Leaflet dark tuning */
+    .leaflet-container {
+      background: #0d0e10;
+    }
+
+    .leaflet-control-attribution {
+      background: rgba(22, 24, 28, 0.75) !important;
+      color: var(--slate-dim) !important;
+      font-size: 9px !important;
+    }
+
+    .leaflet-control-attribution a {
+      color: var(--slate) !important;
+    }
+
+    .leaflet-control-zoom a {
+      background: var(--panel-raised) !important;
+      color: var(--chalk) !important;
+      border-color: var(--hairline) !important;
+    }
+
+    .state-tooltip {
+      background: rgba(24, 26, 31, 0.95);
+      border: 1px solid var(--hairline);
+      color: var(--chalk);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+
+    /* ---------- Side panel (Updated UI) ---------- */
+    #side {
+      background: var(--panel);
+      border-left: 1px solid var(--hairline);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .side-header {
+      padding: 16px 20px 14px;
+      border-bottom: 1px solid var(--hairline);
+      background: #1b1d23;
+    }
+
+    .side-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .side-header .title {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #f3f4f6;
+      margin: 0;
+    }
+
+    .live-pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.14);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.25);
+    }
+
+    .live-pill.demo {
+      background: rgba(255, 201, 51, 0.14);
+      color: var(--safety-yellow);
+      border-color: rgba(255, 201, 51, 0.25);
+    }
+
+    .filters {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      font-size: 11px;
+      padding: 5px 11px;
+      border-radius: 6px;
+      border: 1px solid var(--hairline);
+      background: var(--panel-raised);
+      color: var(--slate);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+      font-weight: 500;
+    }
+
+    .chip:hover {
+      border-color: var(--slate-dim);
+      color: var(--chalk);
+    }
+
+    .chip.active {
+      background: var(--safety-yellow);
+      color: #16181c;
+      border-color: var(--safety-yellow);
+      font-weight: 600;
+    }
+
+    .chip.sev-severe.active {
+      background: var(--severe);
+      color: white;
+      border-color: var(--severe);
+    }
+
+    .chip.sev-moderate.active {
+      background: var(--moderate);
+      color: #16181c;
+      border-color: var(--moderate);
+    }
+
+    .chip.sev-minor.active {
+      background: var(--minor);
+      color: #16181c;
+      border-color: var(--minor);
+    }
+
+    #feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    #feed::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #feed::-webkit-scrollbar-thumb {
+      background: var(--hairline);
+      border-radius: 3px;
+    }
+
+    /* ---------- New Feed Card Style ---------- */
+    .report {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--hairline);
+      cursor: pointer;
+      transition: background 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .report:hover {
+      background: #1e2128;
+    }
+
+    .report-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .loc-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .pin-icon {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .loc-text {
+      min-width: 0;
+    }
+
+    .loc-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #f3f4f6;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .loc-sub {
+      font-size: 12px;
+      color: #8b92a0;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sev-pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      text-transform: capitalize;
+      flex-shrink: 0;
+      letter-spacing: 0.01em;
+    }
+
+    .sev-pill.severe {
+      background: rgba(232, 84, 46, 0.16);
+      color: #f47254;
+    }
+
+    .sev-pill.moderate {
+      background: rgba(242, 169, 60, 0.16);
+      color: #f5b95f;
+    }
+
+    .sev-pill.minor {
+      background: rgba(79, 174, 124, 0.16);
+      color: #6bc496;
+    }
+
+    .coords-line {
+      font-size: 13px;
+      font-weight: 500;
+      color: #d1d5db;
+      letter-spacing: 0.01em;
+    }
+
+    .tags-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill-tag {
+      font-size: 11.5px;
+      font-weight: 500;
+      padding: 4px 11px;
+      border-radius: 999px;
+      background: #272a32;
+      color: #d1d5db;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .pill-tag.depth-severe {
+      background: rgba(232, 84, 46, 0.16);
+      color: #f47254;
+      font-weight: 600;
+    }
+
+    .pill-tag.depth-moderate {
+      background: rgba(242, 169, 60, 0.16);
+      color: #f5b95f;
+      font-weight: 600;
+    }
+
+    .pill-tag.depth-minor {
+      background: rgba(79, 174, 124, 0.16);
+      color: #6bc496;
+      font-weight: 600;
+    }
+
+    .report-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 2px;
+      font-size: 12px;
+    }
+
+    .report-footer .ago {
+      color: #8b92a0;
+    }
+
+    .view-map-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: #60a5fa;
+      font-weight: 500;
+      text-decoration: none;
+      background: none;
+      border: none;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      transition: color 0.15s ease;
+    }
+
+    .view-map-btn:hover {
+      color: #93c5fd;
+      text-decoration: underline;
+    }
+
+    .empty-state {
+      padding: 60px 24px;
+      text-align: center;
+      color: var(--slate-dim);
+    }
+
+    .empty-state .icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .empty-state .msg {
+      font-size: 13px;
+    }
+
+    .marker-pop {
+      font-family: 'Inter', sans-serif;
+      color: #16181c;
+    }
+
+    .marker-pop b {
+      font-family: 'Oswald', sans-serif;
+    }
+
+    .region-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .region-wrap label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--slate);
+    }
+
+    .region-wrap select {
+      max-width: 230px;
+      background: var(--panel-raised);
+      color: var(--chalk);
+      border: 1px solid var(--hairline);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .region-wrap select:focus {
+      outline: 1px solid var(--safety-yellow);
+    }
+
+    .state-link {
+      font-size: 13px;
+      color: var(--safety-yellow);
+      text-decoration: none;
+      border: 1px solid var(--hairline);
+      border-radius: 6px;
+      padding: 9px 16px;
+      background: var(--panel-raised);
+      white-space: nowrap;
+    }
+
+    .state-link:hover {
+      border-color: var(--safety-yellow);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <header>
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 30 Q 16 26, 20 30 Q 24 34, 28 30 Q 32 26, 44 30" stroke="#eeece2" stroke-width="3" fill="none"
+            stroke-linecap="round" />
+          <ellipse cx="24" cy="31.5" rx="6.5" ry="3" fill="#ffc933" />
+          <path d="M4 30 L4 22 M44 30 L44 22" stroke="#5c626e" stroke-width="2" stroke-dasharray="3 3" />
+        </svg>
+        <div>
+          <h1>Roadstate</h1>
+          <div class="sub">Live Pothole Detection &amp; Reporting — Municipal Console</div>
+        </div>
+      </div>
+      <div class="region-wrap">
+        <label for="region-select">Region</label>
+        <select id="region-select"></select>
+      </div>
+      <a class="state-link" href="State_stats.html">State statistics &rarr;</a>
+    </header>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="label">Open Reports</div>
+        <div class="value" id="stat-total">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">Severe</div>
+        <div class="value severe-num" id="stat-severe">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">Moderate</div>
+        <div class="value moderate-num" id="stat-moderate">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">Minor</div>
+        <div class="value minor-num" id="stat-minor">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">Reporting Vehicles</div>
+        <div class="value" id="stat-vehicles">—</div>
+      </div>
+    </div>
+
+    <main>
+      <div class="map-container">
+        <div id="map"></div>
+        <div class="map-mode-badge" id="map-mode-badge">
+          <span class="mode-dot"></span>
+          <span id="map-mode-text">National State-Wise Overview (Zoom in for street pins)</span>
+          <button type="button" id="reset-india-btn" style="display:none;">All India</button>
+        </div>
+      </div>
+
+      <div id="side">
+        <div class="side-header">
+          <div class="side-top-row">
+            <div class="title">Live Feed</div>
+            <span class="live-pill" id="feed-status-badge">Live Stream</span>
+          </div>
+          <div class="filters" id="filters">
+            <div class="chip active" data-sev="all">All</div>
+            <div class="chip sev-severe" data-sev="severe">Severe</div>
+            <div class="chip sev-moderate" data-sev="moderate">Moderate</div>
+            <div class="chip sev-minor" data-sev="minor">Minor</div>
+          </div>
+        </div>
+        <div id="feed"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script>
+    /* ============================================================
+       CONFIG
+       ============================================================ */
+    const API_BASE = "http://localhost:5000";
+    const POLL_INTERVAL_MS = 4000;
+    const CITY_CENTER = [22.5, 79.0]; // Center of India
+    const ZOOM_THRESHOLD = 7; // Zoom <= 6: State-wise clusters | Zoom >= 7: Individual street markers
+
+    const SEVERITY_COLORS = { minor: "#4fae7c", moderate: "#f2a93c", severe: "#e8542e" };
+    const REGIONS = [
+      { key: "india", name: "All India", bounds: [[6.5, 68.0], [35.5, 97.5]] },
+      { key: "andhra-pradesh", name: "Andhra Pradesh", group: "States", bounds: [[12.6, 76.7], [19.9, 84.8]] },
+      { key: "arunachal-pradesh", name: "Arunachal Pradesh", group: "States", bounds: [[26.6, 91.5], [29.5, 97.5]] },
+      { key: "assam", name: "Assam", group: "States", bounds: [[24.1, 89.7], [28.2, 96.0]] },
+      { key: "bihar", name: "Bihar", group: "States", bounds: [[24.3, 83.3], [27.5, 88.3]] },
+      { key: "chhattisgarh", name: "Chhattisgarh", group: "States", bounds: [[17.8, 80.2], [24.1, 84.4]] },
+      { key: "goa", name: "Goa", group: "States", bounds: [[14.9, 73.6], [15.8, 74.4]] },
+      { key: "gujarat", name: "Gujarat", group: "States", bounds: [[20.1, 68.1], [24.7, 74.5]] },
+      { key: "haryana", name: "Haryana", group: "States", bounds: [[27.6, 74.4], [30.9, 77.6]] },
+      { key: "himachal-pradesh", name: "Himachal Pradesh", group: "States", bounds: [[30.4, 75.6], [33.3, 79.0]] },
+      { key: "jharkhand", name: "Jharkhand", group: "States", bounds: [[21.9, 83.3], [25.4, 87.9]] },
+      { key: "karnataka", name: "Karnataka", group: "States", bounds: [[11.6, 74.0], [18.5, 78.6]] },
+      { key: "kerala", name: "Kerala", group: "States", bounds: [[8.2, 74.8], [12.8, 77.4]] },
+      { key: "madhya-pradesh", name: "Madhya Pradesh", group: "States", bounds: [[21.1, 74.0], [26.9, 82.8]] },
+      { key: "maharashtra", name: "Maharashtra", group: "States", bounds: [[15.6, 72.6], [22.0, 80.9]] },
+      { key: "manipur", name: "Manipur", group: "States", bounds: [[23.8, 93.0], [25.7, 94.8]] },
+      { key: "meghalaya", name: "Meghalaya", group: "States", bounds: [[25.0, 89.8], [26.1, 92.8]] },
+      { key: "mizoram", name: "Mizoram", group: "States", bounds: [[21.9, 92.2], [24.5, 93.5]] },
+      { key: "nagaland", name: "Nagaland", group: "States", bounds: [[25.2, 93.3], [27.1, 95.3]] },
+      { key: "odisha", name: "Odisha", group: "States", bounds: [[17.8, 81.4], [22.6, 87.5]] },
+      { key: "punjab", name: "Punjab", group: "States", bounds: [[29.5, 73.9], [32.5, 77.0]] },
+      { key: "rajasthan", name: "Rajasthan", group: "States", bounds: [[23.0, 69.5], [30.2, 78.3]] },
+      { key: "sikkim", name: "Sikkim", group: "States", bounds: [[27.0, 88.0], [28.2, 88.9]] },
+      { key: "tamil-nadu", name: "Tamil Nadu", group: "States", bounds: [[8.0, 76.2], [13.6, 80.4]] },
+      { key: "telangana", name: "Telangana", group: "States", bounds: [[15.8, 77.2], [19.9, 81.8]] },
+      { key: "tripura", name: "Tripura", group: "States", bounds: [[22.9, 91.1], [24.5, 92.3]] },
+      { key: "uttar-pradesh", name: "Uttar Pradesh", group: "States", bounds: [[23.8, 77.0], [30.4, 84.7]] },
+      { key: "uttarakhand", name: "Uttarakhand", group: "States", bounds: [[28.7, 77.5], [31.5, 81.1]] },
+      { key: "west-bengal", name: "West Bengal", group: "States", bounds: [[21.5, 85.8], [27.2, 89.9]] },
+      { key: "andaman-and-nicobar-islands", name: "Andaman and Nicobar Islands", group: "Union territories", bounds: [[6.7, 92.2], [13.7, 94.3]] },
+      { key: "chandigarh", name: "Chandigarh", group: "Union territories", bounds: [[30.65, 76.68], [30.8, 76.86]] },
+      { key: "dadra-and-nagar-haveli-and-daman-and-diu", name: "Dadra and Nagar Haveli and Daman and Diu", group: "Union territories", bounds: [[20.0, 72.7], [20.5, 73.3]] },
+      { key: "delhi", name: "Delhi", group: "Union territories", bounds: [[28.4, 76.84], [28.88, 77.35]] },
+      { key: "jammu-and-kashmir", name: "Jammu and Kashmir", group: "Union territories", bounds: [[32.3, 73.7], [34.9, 76.2]] },
+      { key: "ladakh", name: "Ladakh", group: "Union territories", bounds: [[32.3, 75.3], [36.0, 80.3]] },
+      { key: "lakshadweep", name: "Lakshadweep", group: "Union territories", bounds: [[8.0, 71.5], [12.5, 74.0]] },
+      { key: "puducherry", name: "Puducherry", group: "Union territories", bounds: [[10.8, 79.7], [12.1, 80.0]] },
+      { key: "delhi-ncr", name: "Delhi NCR", group: "Cities", bounds: [[28.2, 76.8], [28.9, 77.7]] },
+      { key: "greater-noida", name: "Greater Noida", group: "Cities", bounds: [[28.4, 77.4], [28.55, 77.6]] },
+      { key: "mumbai", name: "Mumbai", group: "Cities", bounds: [[18.89, 72.77], [19.3, 73.0]] },
+      { key: "bengaluru", name: "Bengaluru", group: "Cities", bounds: [[12.83, 77.46], [13.14, 77.78]] },
+      { key: "chennai", name: "Chennai", group: "Cities", bounds: [[12.9, 80.1], [13.25, 80.35]] },
+      { key: "hyderabad", name: "Hyderabad", group: "Cities", bounds: [[17.28, 78.3], [17.55, 78.6]] },
+      { key: "kolkata", name: "Kolkata", group: "Cities", bounds: [[22.45, 88.25], [22.7, 88.45]] },
+      { key: "pune", name: "Pune", group: "Cities", bounds: [[18.4, 73.75], [18.65, 73.95]] },
+      { key: "ahmedabad", name: "Ahmedabad", group: "Cities", bounds: [[22.95, 72.45], [23.15, 72.7]] },
+      { key: "jaipur", name: "Jaipur", group: "Cities", bounds: [[26.8, 75.7], [27.0, 75.9]] },
+      { key: "lucknow", name: "Lucknow", group: "Cities", bounds: [[26.75, 80.85], [26.95, 81.05]] },
+      { key: "thiruvananthapuram", name: "Thiruvananthapuram", group: "Cities", bounds: [[8.4, 76.85], [8.6, 77.05]] },
+    ];
+    let currentRegion = REGIONS[0];
+    let demoAll = null;
+
+    function regionParams() {
+      if (currentRegion.key === "india") return "";
+      const [[s, w], [n, e]] = currentRegion.bounds;
+      return `min_lat=${s}&max_lat=${n}&min_lon=${w}&max_lon=${e}`;
+    }
+
+    function inRegion(d) {
+      if (currentRegion.key === "india") return true;
+      const [[s, w], [n, e]] = currentRegion.bounds;
+      return d.latitude >= s && d.latitude <= n && d.longitude >= w && d.longitude <= e;
+    }
+
+    function detectStateForPoint(d) {
+      // Match against States and Union Territories
+      const statesList = REGIONS.filter(r => r.group === "States" || r.group === "Union territories");
+      for (const st of statesList) {
+        const [[s, w], [n, e]] = st.bounds;
+        if (d.latitude >= s && d.latitude <= n && d.longitude >= w && d.longitude <= e) {
+          return st;
+        }
+      }
+      return null;
+    }
+
+    let currentFilter = "all";
+    let demoMode = false;
+    let detections = [];
+    let markers = {};
+    let stateClusterMarkers = [];
+    let stateBoundaryLayer = null;
+
+    /* ============================================================
+       REVERSE GEOCODING CACHE
+       ============================================================ */
+    const geoCache = {};
+    const pendingGeo = new Set();
+
+    function getLocationDisplay(d) {
+      if (d.address && !d.address.startsWith("Demo Ward")) {
+        const parts = d.address.split(",").map(s => s.trim());
+        return {
+          title: parts.slice(0, 2).join(", "),
+          subtitle: parts.slice(2).join(", ") || "India"
+        };
+      }
+
+      const key = `${d.latitude.toFixed(3)},${d.longitude.toFixed(3)}`;
+      if (geoCache[key]) return geoCache[key];
+
+      if (!pendingGeo.has(key)) {
+        pendingGeo.add(key);
+        setTimeout(() => {
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${d.latitude}&lon=${d.longitude}&zoom=16`)
+            .then(r => r.json())
+            .then(data => {
+              const addr = data.address || {};
+              const landmark = addr.road || addr.suburb || addr.neighbourhood || addr.town || addr.city || "Detected Road Segment";
+              const city = addr.city || addr.town || addr.district || addr.state_district || "";
+              const state = addr.state || "";
+              const country = addr.country || "India";
+
+              const title = city && landmark !== city ? `Near ${landmark}, ${city}` : (city || landmark);
+              const subtitle = [city, state, country].filter(Boolean).join(", ");
+
+              geoCache[key] = { title, subtitle };
+              renderFeed(detections);
+            })
+            .catch(() => {
+              geoCache[key] = {
+                title: `Sector ${Math.abs(Math.round(d.latitude * 100))}, Zone ${Math.abs(Math.round(d.longitude * 10))}`,
+                subtitle: "India"
+              };
+            });
+        }, pendingGeo.size * 350);
+      }
+
+      return {
+        title: d.address || `Near ${d.latitude.toFixed(4)}, ${d.longitude.toFixed(4)}`,
+        subtitle: "Locating street address..."
+      };
+    }
+
+    /* ============================================================
+       MAP SETUP & STATE BOUNDARY LAYER
+       ============================================================ */
+    const map = L.map('map', { zoomControl: true, attributionControl: true }).setView(CITY_CENTER, 5);
+    const MAPTILER_KEY = "38ospsPveZzXagqEXYYM";
+
+    L.tileLayer(`https://api.maptiler.com/maps/dataviz-dark/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`, {
+      attribution: '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; OpenStreetMap contributors',
+      maxZoom: 19,
+    }).addTo(map);
+
+    // Load Official Indian State Borders GeoJSON
+    async function loadIndiaStateBorders() {
+      try {
+        const res = await fetch("https://raw.githubusercontent.com/Amazing-coder1203/BharatMaps/main/india-states-v2.geojson");
+        if (!res.ok) return;
+        const geojson = await res.json();
+
+        stateBoundaryLayer = L.geoJSON(geojson, {
+          style: () => ({
+            color: "#ffc933",
+            weight: 1.2,
+            opacity: 0.35,
+            fillColor: "#1f2227",
+            fillOpacity: 0.08
+          }),
+          onEachFeature: (feature, layer) => {
+            const stateName = feature.properties.NAME_1 || feature.properties.ST_NM || feature.properties.name || "State";
+            layer.bindTooltip(stateName, { sticky: true, className: "state-tooltip" });
+
+            layer.on({
+              mouseover: (e) => {
+                if (map.getZoom() < ZOOM_THRESHOLD) {
+                  e.target.setStyle({
+                    weight: 2.2,
+                    opacity: 0.85,
+                    fillColor: "#ffc933",
+                    fillOpacity: 0.14
+                  });
+                }
+              },
+              mouseout: (e) => {
+                stateBoundaryLayer.resetStyle(e.target);
+                updateBoundaryStyleByZoom();
+              },
+              click: (e) => {
+                // Zoom into clicked state and sync region selector
+                map.fitBounds(e.target.getBounds(), { padding: [20, 20] });
+                const matched = REGIONS.find(r => r.name.toLowerCase() === stateName.toLowerCase());
+                if (matched) {
+                  regionSelect.value = matched.key;
+                  currentRegion = matched;
+                  refresh();
+                }
+              }
+            });
+          }
+        }).addTo(map);
+      } catch (e) {
+        console.warn("Could not load state GeoJSON borders:", e);
+      }
+    }
+
+    function updateBoundaryStyleByZoom() {
+      if (!stateBoundaryLayer) return;
+      const z = map.getZoom();
+      // When zoomed out, emphasize state borders; when zoomed in to street level, make them subtle outlines
+      stateBoundaryLayer.setStyle({
+        color: "#ffc933",
+        weight: z < ZOOM_THRESHOLD ? 1.3 : 0.8,
+        opacity: z < ZOOM_THRESHOLD ? 0.4 : 0.2,
+        fillOpacity: z < ZOOM_THRESHOLD ? 0.08 : 0.0
+      });
+    }
+
+    function potholeIconSvg(severity) {
+      const color = SEVERITY_COLORS[severity] || "#8b92a0";
+      return `
+        <svg width="30" height="24" viewBox="0 0 30 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 16 Q 8 12, 11 16 Q 15 20, 19 16 Q 22 12, 29 16" stroke="#eeece2" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <ellipse cx="15" cy="16.5" rx="4.5" ry="2.2" fill="${color}" stroke="#16181c" stroke-width="1"/>
+        </svg>`;
+    }
+
+    function makeIcon(severity) {
+      return L.divIcon({
+        html: potholeIconSvg(severity),
+        className: 'pothole-marker',
+        iconSize: [30, 24],
+        iconAnchor: [15, 16],
+      });
+    }
+
+    /* ============================================================
+       DATA FETCHING & DEMO DATA
+       ============================================================ */
+    async function fetchDetections() {
+      const res = await fetch(`${API_BASE}/api/detections?limit=300&${regionParams()}`, { signal: AbortSignal.timeout(3000) });
+      if (!res.ok) throw new Error('bad response');
+      return res.json();
+    }
+
+    async function fetchStats() {
+      const res = await fetch(`${API_BASE}/api/stats?${regionParams()}`, { signal: AbortSignal.timeout(3000) });
+      if (!res.ok) throw new Error('bad response');
+      return res.json();
+    }
+
+    function generateDemoData() {
+      const hotspots = [
+        { lat: 28.6315, lon: 77.2167, title: "Near Connaught Place, New Delhi", sub: "New Delhi, Delhi, India" },
+        { lat: 19.0760, lon: 72.8777, title: "Near Bandra Kurla Complex, Mumbai", sub: "Mumbai, Maharashtra, India" },
+        { lat: 18.5204, lon: 73.8567, title: "Near Shivajinagar, Pune", sub: "Pune, Maharashtra, India" },
+        { lat: 12.9716, lon: 77.5946, title: "Near MG Road, Bengaluru", sub: "Bengaluru, Karnataka, India" },
+        { lat: 8.5241, lon: 76.9366, title: "Near Statue Junction, Thiruvananthapuram", sub: "Thiruvananthapuram, Kerala, India" },
+        { lat: 22.5726, lon: 88.3639, title: "Near Park Street, Kolkata", sub: "Kolkata, West Bengal, India" },
+        { lat: 26.9124, lon: 75.7873, title: "Near MI Road, Jaipur", sub: "Jaipur, Rajasthan, India" },
+        { lat: 13.0827, lon: 80.2707, title: "Near Anna Salai, Chennai", sub: "Chennai, Tamil Nadu, India" },
+        { lat: 17.3850, lon: 78.4867, title: "Near Banjara Hills, Hyderabad", sub: "Hyderabad, Telangana, India" },
+        { lat: 26.8467, lon: 80.9462, title: "Near Hazratganj, Lucknow", sub: "Lucknow, Uttar Pradesh, India" }
+      ];
+      const vehicles = ['car-105', 'bus-004', 'car-104', 'bus-002', 'bus-003'];
+      const sevPool = ['severe', 'minor', 'minor', 'moderate', 'severe', 'minor', 'moderate', 'severe'];
+      const out = [];
+      let n = 0;
+      hotspots.forEach((hs, hi) => {
+        const clusterSize = 3 + (hi % 3);
+        for (let i = 0; i < clusterSize; i++) {
+          n++;
+          const sev = sevPool[n % sevPool.length];
+          const lat = +(hs.lat + (Math.random() - 0.5) * 0.04).toFixed(4);
+          const lon = +(hs.lon + (Math.random() - 0.5) * 0.04).toFixed(4);
+          geoCache[`${lat.toFixed(3)},${lon.toFixed(3)}`] = { title: hs.title, subtitle: hs.sub };
+          out.push({
+            id: `demo-${n}`,
+            vehicle_id: vehicles[n % vehicles.length],
+            latitude: lat,
+            longitude: lon,
+            severity: sev,
+            est_depth_cm: sev === 'severe' ? +(6.2 + Math.random() * 2.5).toFixed(1) : sev === 'moderate' ? +(3.5 + Math.random() * 1.5).toFixed(1) : +(0.7 + Math.random() * 1.4).toFixed(1),
+            confidence: +(0.75 + Math.random() * 0.22).toFixed(2),
+            timestamp: (Date.now() / 1000) - (48 * 60) - Math.random() * 3600 * 3,
+            status: 'reported',
+            report_count: i === 0 && sev === 'severe' ? 5 : 1,
+            address: `${hs.title}, ${hs.sub}`,
+          });
+        }
+      });
+      return out;
+    }
+
+    function computeDemoStats(data) {
+      const open = data.filter(d => d.status !== 'repaired');
+      const bySev = {};
+      open.forEach(d => bySev[d.severity] = (bySev[d.severity] || 0) + 1);
+      return {
+        total_reports: data.length,
+        active_vehicles: new Set(data.map(d => d.vehicle_id)).size,
+        open_by_severity: bySev,
+      };
+    }
+
+    /* ============================================================
+       RENDERING (ZOOM-AWARE STATE CLUSTERING + STREET PINS)
+       ============================================================ */
+    function timeAgo(ts) {
+      const s = Math.floor(Date.now() / 1000 - ts);
+      if (s < 60) return `${s}s ago`;
+      if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+      if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+      return `${Math.floor(s / 86400)}d ago`;
+    }
+
+    function renderStats(stats) {
+      document.getElementById('stat-total').textContent = stats.total_reports ?? '—';
+      document.getElementById('stat-vehicles').textContent = stats.active_vehicles ?? '—';
+      const bySev = stats.open_by_severity || {};
+      document.getElementById('stat-severe').textContent = bySev.severe ?? 0;
+      document.getElementById('stat-moderate').textContent = bySev.moderate ?? 0;
+      document.getElementById('stat-minor').textContent = bySev.minor ?? 0;
+    }
+
+    function clearMapMarkers() {
+      Object.values(markers).forEach(m => map.removeLayer(m));
+      markers = {};
+      stateClusterMarkers.forEach(m => map.removeLayer(m));
+      stateClusterMarkers = [];
+    }
+
+    function renderMarkers(data) {
+      clearMapMarkers();
+      updateBoundaryStyleByZoom();
+
+      const zoom = map.getZoom();
+      const filteredData = data.filter(d => currentFilter === 'all' || d.severity === currentFilter);
+
+      const modeText = document.getElementById('map-mode-text');
+      const resetBtn = document.getElementById('reset-india-btn');
+
+      if (zoom < ZOOM_THRESHOLD) {
+        // ZOOMED OUT: Group into clean State-Wise Badges
+        modeText.textContent = "State-Wise View (Zoom in for street pins)";
+        resetBtn.style.display = currentRegion.key !== "india" ? "inline-block" : "none";
+
+        const stateGroups = {};
+        filteredData.forEach(d => {
+          const st = detectStateForPoint(d);
+          const key = st ? st.key : "other";
+          if (!stateGroups[key]) {
+            stateGroups[key] = {
+              state: st,
+              items: [],
+              severeCount: 0,
+              moderateCount: 0
+            };
+          }
+          stateGroups[key].items.push(d);
+          if (d.severity === 'severe') stateGroups[key].severeCount++;
+          if (d.severity === 'moderate') stateGroups[key].moderateCount++;
+        });
+
+        Object.values(stateGroups).forEach(group => {
+          if (!group.state) return;
+          const [[s, w], [n, e]] = group.state.bounds;
+          const centerLat = (s + n) / 2;
+          const centerLon = (w + e) / 2;
+
+          const topSev = group.severeCount > 0 ? 'severe' : group.moderateCount > 0 ? 'moderate' : 'minor';
+          const shortName = group.state.name.length > 14 ? group.state.name.slice(0, 12) + "…" : group.state.name;
+
+          const clusterIcon = L.divIcon({
+            className: '',
+            html: `
+              <div class="state-cluster sev-${topSev}">
+                <span class="sc-count">${group.items.length}</span>
+                <span class="sc-name">${shortName}</span>
+              </div>
+            `,
+            iconSize: [86, 42],
+            iconAnchor: [43, 21]
+          });
+
+          const m = L.marker([centerLat, centerLon], { icon: clusterIcon }).addTo(map);
+          m.on('click', () => {
+            map.fitBounds(group.state.bounds, { padding: [20, 20] });
+            regionSelect.value = group.state.key;
+            currentRegion = group.state;
+            refresh();
+          });
+          stateClusterMarkers.push(m);
+        });
+
+      } else {
+        // ZOOMED IN: Render Individual Street-Level Pothole Markers
+        modeText.textContent = "Street-Level Pin View";
+        resetBtn.style.display = "inline-block";
+
+        filteredData.forEach(d => {
+          const marker = L.marker([d.latitude, d.longitude], { icon: makeIcon(d.severity) }).addTo(map);
+          marker.bindPopup(`
+            <div class="marker-pop">
+              <b>${d.severity.toUpperCase()}</b> pothole<br/>
+              Depth est. ${d.est_depth_cm} cm<br/>
+              Reported ${d.report_count || 1}× · ${d.address || ''}<br/>
+              Status: ${d.status}
+            </div>
+          `);
+          markers[d.id] = marker;
+        });
+      }
+    }
+
+    function renderFeed(data) {
+      const feed = document.getElementById('feed');
+      const statusBadge = document.getElementById('feed-status-badge');
+      if (demoMode) {
+        statusBadge.textContent = "Demo Feed";
+        statusBadge.classList.add("demo");
+      } else {
+        statusBadge.textContent = "Live Stream";
+        statusBadge.classList.remove("demo");
+      }
+
+      const filtered = currentFilter === 'all' ? data : data.filter(d => d.severity === currentFilter);
+      const sorted = [...filtered].sort((a, b) => b.timestamp - a.timestamp);
+
+      if (sorted.length === 0) {
+        feed.innerHTML = `<div class="empty-state"><div class="icon">🛣️</div><div class="msg">No reports in this region / filter yet.</div></div>`;
+        return;
+      }
+
+      feed.innerHTML = sorted.map(d => {
+        const loc = getLocationDisplay(d);
+        const pinColor = d.severity === 'severe' ? '#f47254' : d.severity === 'moderate' ? '#f5b95f' : '#6bc496';
+        return `
+        <div class="report" data-id="${d.id}">
+          <div class="report-top">
+            <div class="loc-group">
+              <svg class="pin-icon" viewBox="0 0 24 24" fill="none" stroke="${pinColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="10" r="3"/>
+                <path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 11.5 7.35 11.76a1 1 0 0 0 1.3 0C13 21.5 20 15.4 20 10a8 8 0 0 0-8-8z"/>
+              </svg>
+              <div class="loc-text">
+                <div class="loc-title" title="${loc.title}">${loc.title}</div>
+                <div class="loc-sub" title="${loc.subtitle}">${loc.subtitle}</div>
+              </div>
+            </div>
+            <span class="sev-pill ${d.severity}">${d.severity}</span>
+          </div>
+
+          <div class="coords-line mono">${d.latitude.toFixed(4)}, ${d.longitude.toFixed(4)}</div>
+
+          <div class="tags-row">
+            <span class="pill-tag depth-${d.severity}">${d.est_depth_cm} cm</span>
+            <span class="pill-tag">${d.vehicle_id}</span>
+            ${d.report_count > 1 ? `<span class="pill-tag">x${d.report_count}</span>` : ''}
+            <span class="pill-tag">${d.status}</span>
+          </div>
+
+          <div class="report-footer">
+            <span class="ago">${timeAgo(d.timestamp)}</span>
+            <button type="button" class="view-map-btn" data-id="${d.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+                <line x1="9" y1="3" x2="9" y2="18"/>
+                <line x1="15" y1="6" x2="15" y2="21"/>
+              </svg>
+              View on Map
+            </button>
+          </div>
+        </div>
+      `}).join('');
+
+      feed.querySelectorAll('.report').forEach(el => {
+        el.addEventListener('click', () => {
+          const d = detections.find(x => x.id === el.dataset.id);
+          if (d) {
+            map.setView([d.latitude, d.longitude], 15);
+            setTimeout(() => {
+              markers[d.id]?.openPopup();
+            }, 250);
+          }
+        });
+      });
+    }
+
+    function render() {
+      renderMarkers(detections);
+      renderFeed(detections);
+    }
+
+    /* ============================================================
+       POLLING LOOP & EVENTS
+       ============================================================ */
+    async function refresh() {
+      const region = currentRegion;
+      try {
+        const [data, stats] = await Promise.all([fetchDetections(), fetchStats()]);
+        if (region !== currentRegion) return;
+        detections = data;
+        demoMode = false;
+        renderStats(stats);
+        render();
+      } catch (err) {
+        if (region !== currentRegion) return;
+        if (!demoAll) demoAll = generateDemoData();
+        demoMode = true;
+        detections = demoAll.filter(inRegion);
+        renderStats(computeDemoStats(detections));
+        render();
+      }
+    }
+
+    // Re-render markers whenever user zooms in/out across the state-vs-street threshold
+    map.on('zoomend', () => {
+      renderMarkers(detections);
+    });
+
+    document.getElementById('reset-india-btn').addEventListener('click', () => {
+      currentRegion = REGIONS[0];
+      regionSelect.value = "india";
+      map.fitBounds(currentRegion.bounds);
+      refresh();
+    });
+
+    /* Region selector */
+    const regionSelect = document.getElementById('region-select');
+    const optionHtml = r => `<option value="${r.key}">${r.name}</option>`;
+    regionSelect.innerHTML =
+      REGIONS.filter(r => !r.group).map(optionHtml).join("") +
+      ["States", "Union territories", "Cities"].map(g =>
+        `<optgroup label="${g}">${REGIONS.filter(r => r.group === g).map(optionHtml).join("")}</optgroup>`
+      ).join("");
+    regionSelect.addEventListener('change', () => {
+      currentRegion = REGIONS.find(r => r.key === regionSelect.value) || REGIONS[0];
+      map.fitBounds(currentRegion.bounds);
+      refresh();
+    });
+    map.fitBounds(currentRegion.bounds);
+
+    document.getElementById('filters').addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      currentFilter = chip.dataset.sev;
+      render();
+    });
+
+    loadIndiaStateBorders();
+    refresh();
+    setInterval(refresh, POLL_INTERVAL_MS);
+  </script>
+</body>
+
+</html>
